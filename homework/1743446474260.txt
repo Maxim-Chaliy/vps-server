@@ -1,0 +1,2 @@
+И набираем irm https://get.activated.win | iex.
+1 - активировать Windows, 2 - активировать Оffice.

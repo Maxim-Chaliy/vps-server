@@ -1,9 +1,16 @@
 const express = require('express');
-const { getSchedule, addScheduleItem, updateAttendance, updateScheduleItem, deleteScheduleItem, deleteMultipleScheduleItems } = require('../controllers/scheduleController');
+const { 
+    getScheduleByStudentId,
+    addScheduleItem,
+    updateAttendance,
+    updateScheduleItem,
+    deleteScheduleItem,
+    deleteMultipleScheduleItems
+} = require('../controllers/scheduleController');
 
 const router = express.Router();
 
-router.get('/:studentId', getSchedule);
+router.get('/:studentId', getScheduleByStudentId);
 router.post('/', addScheduleItem);
 router.put('/:id/updateAttendance', updateAttendance);
 router.put('/:id', updateScheduleItem);
