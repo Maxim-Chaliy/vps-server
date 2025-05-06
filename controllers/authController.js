@@ -2,134 +2,199 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const axios = require('axios');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+const transporter = nodemailer.createTransport({
+    host: 'smtp.yandex.ru',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.YANDEX_SMTP_USER,
+        pass: process.env.YANDEX_SMTP_PASSWORD
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
+});
 
 exports.register = async (req, res) => {
-  try {
-    const { name, surname, patronymic, email, username, password, recaptchaToken } = req.body;
+    try {
+        const { name, surname, patronymic, email, username, password, recaptchaToken } = req.body;
 
-    // Проверка reCAPTCHA
-    if (!recaptchaToken) {
-      return res.status(400).json({ error: 'reCAPTCHA token is required' });
+        if (!recaptchaToken) {
+            return res.status(400).json({ error: 'reCAPTCHA token is required' });
+        }
+
+        const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+        const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`;
+
+        const recaptchaResponse = await axios.post(verificationUrl);
+
+        if (!recaptchaResponse.data.success) {
+            return res.status(400).json({
+                error: 'reCAPTCHA verification failed',
+                details: recaptchaResponse.data['error-codes']
+            });
+        }
+
+        const existingUser = await User.findOne({
+            $or: [{ email }, { username }]
+        });
+
+        if (existingUser) {
+            return res.status(400).json({
+                error: 'User with this email or username already exists'
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        const user = new User({
+            name,
+            surname,
+            patronymic: patronymic || '',
+            email,
+            username,
+            password: hashedPassword,
+            role: 'user',
+            confirmationCode,
+            isVerified: false
+        });
+
+        await user.save();
+
+        const mailOptions = {
+            from: `"Easymath Service" <${process.env.YANDEX_SMTP_USER}>`,
+            to: email,
+            subject: 'Ваш код доступа к Easymath',
+            text: `Здравствуйте,\n\nДля завершения регистрации используйте код: ${confirmationCode}\n\nС уважением,\nКоманда Easymath`,
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <h2 style="color: #2c3e50;">Здравствуйте,</h2>
+                    <p>Для завершения регистрации в сервисе Easymath используйте следующий код:</p>
+                    <div style="background: #f8f9fa; padding: 15px; margin: 20px 0;
+                                border-left: 4px solid #3498db; font-size: 18px;">
+                        ${confirmationCode}
+                    </div>
+                    <p>Если вы не запрашивали этот код, проигнорируйте это письмо.</p>
+                    <p style="margin-top: 30px;">С уважением,<br>Команда Easymath</p>
+                </div>
+            `,
+            headers: {
+                'X-Laziness-level': '1000',
+                'X-Mailer': 'Nodemailer'
+            }
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.status(201).json({
+            message: 'User registered successfully. Please check your email for the confirmation code.',
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                error: 'Validation error',
+                details: error.errors
+            });
+        }
+
+        res.status(500).json({
+            error: 'Internal server error during registration'
+        });
     }
-
-    const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-    const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`;
-
-    const recaptchaResponse = await axios.post(verificationUrl);
-    
-    if (!recaptchaResponse.data.success) {
-      return res.status(400).json({ 
-        error: 'reCAPTCHA verification failed',
-        details: recaptchaResponse.data['error-codes']
-      });
-    }
-
-    // Проверка существующего пользователя
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ 
-        error: 'User with this email or username already exists'
-      });
-    }
-
-    // Хеширование пароля
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Создание пользователя
-    const user = new User({ 
-      name, 
-      surname, 
-      patronymic: patronymic || '', 
-      email, 
-      username, 
-      password: hashedPassword,
-      role: 'user'
-    });
-
-    await user.save();
-
-    res.status(201).json({ 
-      message: 'User registered successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email
-      }
-    });
-
-  } catch (error) {
-    console.error('Registration error:', error);
-    
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        error: 'Validation error',
-        details: error.errors 
-      });
-    }
-
-    res.status(500).json({ 
-      error: 'Internal server error during registration' 
-    });
-  }
 };
 
 exports.login = async (req, res) => {
     try {
-      const { username, password, recaptchaToken } = req.body;
-  
-      // Проверка reCAPTCHA для авторизации
-      if (!recaptchaToken) {
-        return res.status(400).json({ error: 'Токен reCAPTCHA отсутствует' });
-      }
-  
-      const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-      const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`;
-  
-      const recaptchaResponse = await axios.post(verificationUrl);
-      
-      if (!recaptchaResponse.data.success) {
-        return res.status(400).json({ 
-          error: 'Проверка reCAPTCHA не пройдена',
-          details: recaptchaResponse.data['error-codes']
-        });
-      }
-  
-      // Поиск пользователя
-      const user = await User.findOne({ username });
-      if (!user) {
-        return res.status(400).json({ error: 'Неверное имя пользователя или пароль' });
-      }
-      
-      // Проверка пароля
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ error: 'Неверное имя пользователя или пароль' });
-      }
-      
-      // Генерация токена
-      const token = jwt.sign(
-        { userId: user._id, role: user.role }, 
-        process.env.JWT_SECRET, 
-        { expiresIn: '1h' }
-      );
-      
-      // Ответ с токеном и данными пользователя
-      res.status(200).json({
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          username: user.username,
-          role: user.role
+        const { username, password, recaptchaToken } = req.body;
+
+        if (!recaptchaToken) {
+            return res.status(400).json({ error: 'Токен reCAPTCHA отсутствует' });
         }
-      });
-  
+
+        const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+        const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`;
+
+        const recaptchaResponse = await axios.post(verificationUrl);
+
+        if (!recaptchaResponse.data.success) {
+            return res.status(400).json({
+                error: 'Проверка reCAPTCHA не пройдена',
+                details: recaptchaResponse.data['error-codes']
+            });
+        }
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(400).json({ error: 'Неверное имя пользователя или пароль' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Неверное имя пользователя или пароль' });
+        }
+
+        const token = jwt.sign(
+            { userId: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.status(200).json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                username: user.username,
+                role: user.role
+            }
+        });
+
     } catch (error) {
-      console.error('Ошибка при входе:', error);
-      res.status(500).json({ error: 'Ошибка сервера при входе в систему' });
+        console.error('Ошибка при входе:', error);
+        res.status(500).json({ error: 'Ошибка сервера при входе в систему' });
     }
-  };
+};
+
+exports.confirmEmail = async (req, res) => {
+  try {
+      const { email, confirmationCode } = req.body;
+
+      // Логирование данных запроса
+      console.log('Received confirmation request:', { email, confirmationCode });
+
+      const user = await User.findOne({ email });
+
+      if (!user) {
+          console.error('User not found for email:', email);
+          return res.status(400).json({ error: 'User not found' });
+      }
+
+      if (user.confirmationCode !== confirmationCode) {
+          console.error('Invalid confirmation code for email:', email);
+          return res.status(400).json({ error: 'Invalid confirmation code' });
+      }
+
+      user.isVerified = true;
+      user.confirmationCode = ''; // Устанавливаем пустую строку
+      await user.save();
+
+      res.status(200).json({ message: 'Email confirmed successfully' });
+
+  } catch (error) {
+      console.error('Email confirmation error:', error);
+      res.status(500).json({ error: 'Internal server error during email confirmation' });
+  }
+};

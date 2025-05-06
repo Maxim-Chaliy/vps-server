@@ -9,7 +9,9 @@ const scheduleRoutes = require('./routes/scheduleRoutes');
 const homeworkRoutes = require('./routes/homeworkRoutes');
 const setMatRoutes = require('./routes/setMatRoutes');
 const educMatRoutes = require('./routes/educMatRoutes');
-const applicationRoutes = require('./routes/applicationRoutes'); // Подключение роута для заявок
+const applicationRoutes = require('./routes/applicationRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const employmentRoutes = require('./routes/employmentRoutes'); // Подключение маршрутов занятости
 const dotenv = require('dotenv');
 
 // Load environment variables from .env file
@@ -43,7 +45,9 @@ app.use('/api/schedules', scheduleRoutes);
 app.use('/api/homework', homeworkRoutes);
 app.use('/api/setmat', setMatRoutes);
 app.use('/api/educmat', educMatRoutes);
-app.use('/api', applicationRoutes); // Подключение роута для заявок
+app.use('/api/groups', groupRoutes);
+app.use('/api/employment', employmentRoutes); // Подключение маршрутов занятости
+app.use('/api', applicationRoutes);
 
 app.listen(port, () => {
     console.log(`Сервер запущен на порту ${port}`);

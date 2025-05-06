@@ -1,20 +1,15 @@
 const express = require('express');
-const { register, login, confirmEmail } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.post('/confirm-email', confirmEmail);
-
 // Пример маршрута, требующего аутентификации
-router.get('/protected', authMiddleware, (req, res) => {
+router.get('/some-protected-route', authMiddleware, (req, res) => {
     res.send('This is a protected route');
 });
 
 // Пример маршрута, требующего роли админа
-router.get('/admin', authMiddleware, adminMiddleware, (req, res) => {
+router.get('/admin-route', authMiddleware, adminMiddleware, (req, res) => {
     res.send('This is an admin route');
 });
 

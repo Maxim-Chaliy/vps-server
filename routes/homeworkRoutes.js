@@ -1,17 +1,23 @@
 const express = require('express');
-const { addHomeworkItem, getHomeworkByStudentId, uploadAnswer } = require('../controllers/homeworkController');
-
 const router = express.Router();
+const homeworkController = require('../controllers/homeworkController');
 
-// Маршрут для добавления нового домашнего задания
-router.post('/', addHomeworkItem);
+// Получение домашних заданий для студента
+router.get('/:studentId', homeworkController.getHomeworkByStudentId);
 
-// Маршрут для получения домашнего задания по student_id
-router.get('/:studentId', getHomeworkByStudentId);
+// Получение домашних заданий для группы
+router.get('/group/:groupId', homeworkController.getHomeworkByGroupId);
 
-// Маршрут для загрузки ответа на домашнее задание
-router.post('/upload-answer', uploadAnswer);
+// Добавление нового домашнего задания
+router.post('/', homeworkController.addHomeworkItem);
 
-// Другие маршруты...
+// Загрузка ответа на домашнее задание
+router.post('/upload-answer', homeworkController.uploadAnswer);
+
+// Обновление оценки домашнего задания
+router.put('/:id/grade', homeworkController.updateGrade);
+
+// Обновление оценки конкретного студента для домашнего задания
+router.put('/:id/grade/:studentId', homeworkController.updateStudentGrade);
 
 module.exports = router;

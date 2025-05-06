@@ -10,6 +10,16 @@ exports.getUsers = async (req, res) => {
     }
 };
 
+// Получение всех студентов
+exports.getAllStudents = async (req, res) => {
+    try {
+        const students = await User.find({ role: 'student' });
+        res.json(students);
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка при получении студентов' });
+    }
+};
+
 // Обновление роли пользователя
 exports.updateUserRole = async (req, res) => {
     const { id } = req.params;
