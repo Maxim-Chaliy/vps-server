@@ -1,21 +1,24 @@
 const mongoose = require('mongoose');
 
 const homeworkSchema = new mongoose.Schema({
-  student_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: function() { return !this.group_id; } 
+  student_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: function() { return !this.group_id; }
   },
-  group_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Group', 
-    required: function() { return !this.student_id; } 
+  group_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    required: function() { return !this.student_id; }
   },
   day: { type: String, required: true },
   dueDate: { type: Date, required: true },
   files: { type: [String], required: true },
-  answer: { type: [String], default: [] },
-  grades: { 
+  answer: [{
+    student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    file: { type: String, required: true }
+  }],
+  grades: {
     type: Map,
     of: Number,
     default: {}

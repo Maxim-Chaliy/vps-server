@@ -48,6 +48,12 @@ const userSchema = new mongoose.Schema({
   confirmationCode: {
     type: String
   },
+  resetPasswordToken: {
+    type: String
+  },
+  resetPasswordExpires: {
+    type: Date
+  },
   isVerified: {
     type: Boolean,
     default: false

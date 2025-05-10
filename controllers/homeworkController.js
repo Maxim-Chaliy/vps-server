@@ -1,7 +1,7 @@
-const Homework = require('../models/Homework');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const Homework = require('../models/Homework');
 
 // Настройка multer для сохранения файлов
 const storage = multer.diskStorage({
@@ -78,8 +78,8 @@ exports.addHomeworkItem = [
 exports.uploadAnswer = [
     upload.array('files'),
     async (req, res) => {
-        const { homework_id } = req.body;
-        const files = req.files.map(file => file.filename);
+        const { homework_id, student_id } = req.body;
+        const files = req.files.map(file => ({ student_id, file: file.filename }));
 
         try {
             const updatedHomework = await Homework.findByIdAndUpdate(
@@ -126,9 +126,9 @@ exports.updateStudentGrade = async (req, res) => {
 
         const update = {};
         if (grade !== null && grade !== undefined) {
-            update[`grades.${studentId}`] = grade;
+            update.$set = { [`grades.${studentId}`]: grade };
         } else {
-            update[`$unset`] = { [`grades.${studentId}`]: 1 };
+            update.$unset = { [`grades.${studentId}`]: 1 };
         }
 
         const updatedHomework = await Homework.findByIdAndUpdate(

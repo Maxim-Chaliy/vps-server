@@ -2,11 +2,14 @@ const express = require('express');
 const { register, login, confirmEmail } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
+const { forgotPassword, resetPassword } = require('../controllers/authController');
 const router = express.Router();
 
 router.post('/register', register);
 router.post('/login', login);
 router.post('/confirm-email', confirmEmail);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Пример маршрута, требующего аутентификации
 router.get('/protected', authMiddleware, (req, res) => {

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
@@ -169,32 +170,128 @@ exports.login = async (req, res) => {
 };
 
 exports.confirmEmail = async (req, res) => {
-  try {
-      const { email, confirmationCode } = req.body;
+    try {
+        const { email, confirmationCode } = req.body;
 
-      // Логирование данных запроса
-      console.log('Received confirmation request:', { email, confirmationCode });
+        // Логирование данных запроса
+        console.log('Received confirmation request:', { email, confirmationCode });
 
-      const user = await User.findOne({ email });
+        const user = await User.findOne({ email });
 
-      if (!user) {
-          console.error('User not found for email:', email);
-          return res.status(400).json({ error: 'User not found' });
-      }
+        if (!user) {
+            console.error('User not found for email:', email);
+            return res.status(400).json({ error: 'User not found' });
+        }
 
-      if (user.confirmationCode !== confirmationCode) {
-          console.error('Invalid confirmation code for email:', email);
-          return res.status(400).json({ error: 'Invalid confirmation code' });
-      }
+        if (user.confirmationCode !== confirmationCode) {
+            console.error('Invalid confirmation code for email:', email);
+            return res.status(400).json({ error: 'Invalid confirmation code' });
+        }
 
-      user.isVerified = true;
-      user.confirmationCode = ''; // Устанавливаем пустую строку
-      await user.save();
+        user.isVerified = true;
+        user.confirmationCode = ''; // Устанавливаем пустую строку
+        await user.save();
 
-      res.status(200).json({ message: 'Email confirmed successfully' });
+        res.status(200).json({ message: 'Email confirmed successfully' });
 
-  } catch (error) {
-      console.error('Email confirmation error:', error);
-      res.status(500).json({ error: 'Internal server error during email confirmation' });
-  }
+    } catch (error) {
+        console.error('Email confirmation error:', error);
+        res.status(500).json({ error: 'Internal server error during email confirmation' });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email, recaptchaToken } = req.body;
+
+        if (!recaptchaToken) {
+            return res.status(400).json({ error: 'reCAPTCHA token is required' });
+        }
+
+        const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+        const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`;
+
+        const recaptchaResponse = await axios.post(verificationUrl);
+
+        if (!recaptchaResponse.data.success) {
+            return res.status(400).json({
+                error: 'reCAPTCHA verification failed',
+                details: recaptchaResponse.data['error-codes']
+            });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ error: 'User with this email does not exist' });
+        }
+
+        const resetToken = crypto.randomBytes(20).toString('hex');
+        const resetTokenExpires = Date.now() + 3600000; // 1 hour
+
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = resetTokenExpires;
+        await user.save();
+
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+        const mailOptions = {
+            from: `"Easymath Service" <${process.env.YANDEX_SMTP_USER}>`,
+            to: email,
+            subject: 'Сброс пароля',
+            text: `Здравствуйте, ${user.username},\n\nДля сброса пароля перейдите по ссылке: ${resetUrl}\n\nС уважением,\nКоманда Easymath`,
+            html: `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #2c3e50;">Здравствуйте, ${user.username}</h2>
+            <p>Для сброса пароля перейдите по ссылке:</p>
+            <a href="${resetUrl}" style="background: #f8f9fa; padding: 15px; margin: 20px 0;
+                        border-left: 4px solid #3498db; font-size: 18px; display: inline-block;">
+                Сбросить пароль
+            </a>
+            <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+            <p style="margin-top: 30px;">С уважением,<br>Команда Easymath</p>
+        </div>
+    `,
+            headers: {
+                'X-Laziness-level': '1000',
+                'X-Mailer': 'Nodemailer'
+            }
+        };
+
+
+
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ message: 'Password reset link sent to your email' });
+
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Internal server error during password reset request' });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Password reset token is invalid or has expired' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        res.status(200).json({ message: 'Password has been reset successfully' });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Internal server error during password reset' });
+    }
 };
