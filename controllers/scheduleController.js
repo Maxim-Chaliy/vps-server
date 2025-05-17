@@ -29,7 +29,7 @@ exports.getGroupScheduleWithStudents = async (req, res) => {
     try {
         const { groupId } = req.params;
         const group = await mongoose.model('Group').findById(groupId).populate('students');
-        
+
         if (!group) {
             return res.status(404).json({ message: 'Group not found' });
         }
@@ -65,6 +65,45 @@ exports.addScheduleItem = async (req, res) => {
             });
         }
 
+        // Преобразуем время для проверки
+        const newDate = new Date(date);
+        const newEndTime = calculateEndTime(time, duration);
+
+        // Ищем ВСЕ занятия на эту дату (и групповые, и индивидуальные)
+        const existingSchedules = await Schedule.find({
+            date: {
+                $gte: new Date(newDate.setHours(0, 0, 0, 0)),
+                $lte: new Date(newDate.setHours(23, 59, 59, 999))
+            }
+        });
+
+        // Функция для преобразования времени в минуты
+        const toMinutes = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+
+        const newStart = toMinutes(time);
+        const newEnd = toMinutes(newEndTime);
+
+        const hasConflict = existingSchedules.some(item => {
+            // Исключаем текущую запись при обновлении
+            if (req.params.id && item._id.toString() === req.params.id) {
+                return false;
+            }
+
+            const existingStart = toMinutes(item.time);
+            const existingEnd = toMinutes(calculateEndTime(item.time, item.duration));
+
+            return (newStart < existingEnd && newEnd > existingStart);
+        });
+
+        if (hasConflict) {
+            return res.status(400).json({
+                error: 'В выбранное время уже есть занятие. Пожалуйста, выберите другое время.'
+            });
+        }
+
         const newScheduleItem = new Schedule({
             student_id,
             group_id,
@@ -74,7 +113,6 @@ exports.addScheduleItem = async (req, res) => {
             duration: parseInt(duration),
             subject,
             description: description || '',
-            // Для индивидуальных занятий сразу проставляем посещаемость как false
             attendance: student_id ? false : null
         });
 
@@ -87,6 +125,15 @@ exports.addScheduleItem = async (req, res) => {
         });
     }
 };
+
+// Вспомогательная функция для расчета времени окончания
+function calculateEndTime(startTime, duration) {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+}
 
 // Обновление посещаемости (универсальное - для групп и индивидуальных занятий)
 exports.updateAttendance = async (req, res) => {
@@ -102,7 +149,7 @@ exports.updateAttendance = async (req, res) => {
         // Если это индивидуальное занятие
         if (scheduleItem.student_id) {
             scheduleItem.attendance = attendance;
-        } 
+        }
         // Если это групповое занятие и передан studentId
         else if (scheduleItem.group_id && studentId) {
             if (!scheduleItem.attendance) {
