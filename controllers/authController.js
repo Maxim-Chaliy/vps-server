@@ -225,6 +225,7 @@ exports.forgotPassword = async (req, res) => {
             return res.status(400).json({ error: 'User with this email does not exist' });
         }
 
+        // Генерация нового токена каждый раз
         const resetToken = crypto.randomBytes(20).toString('hex');
         const resetTokenExpires = Date.now() + 3600000; // 1 hour
 
@@ -240,24 +241,22 @@ exports.forgotPassword = async (req, res) => {
             subject: 'Сброс пароля',
             text: `Здравствуйте, ${user.username},\n\nДля сброса пароля перейдите по ссылке: ${resetUrl}\n\nС уважением,\nКоманда Easymath`,
             html: `
-        <div style="font-family: Arial, sans-serif; color: #333;">
-            <h2 style="color: #2c3e50;">Здравствуйте, ${user.username}</h2>
-            <p>Для сброса пароля перейдите по ссылке:</p>
-            <a href="${resetUrl}" style="background: #f8f9fa; padding: 15px; margin: 20px 0;
-                        border-left: 4px solid #3498db; font-size: 18px; display: inline-block;">
-                Сбросить пароль
-            </a>
-            <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
-            <p style="margin-top: 30px;">С уважением,<br>Команда Easymath</p>
-        </div>
-    `,
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <h2 style="color: #2c3e50;">Здравствуйте, ${user.username}</h2>
+                    <p>Для сброса пароля перейдите по ссылке:</p>
+                    <a href="${resetUrl}" style="background: #f8f9fa; padding: 15px; margin: 20px 0;
+                                border-left: 4px solid #3498db; font-size: 18px; display: inline-block;">
+                        Сбросить пароль
+                    </a>
+                    <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+                    <p style="margin-top: 30px;">С уважением,<br>Команда Easymath</p>
+                </div>
+            `,
             headers: {
                 'X-Laziness-level': '1000',
                 'X-Mailer': 'Nodemailer'
             }
         };
-
-
 
         await transporter.sendMail(mailOptions);
 
@@ -279,7 +278,7 @@ exports.resetPassword = async (req, res) => {
         });
 
         if (!user) {
-            return res.status(400).json({ error: 'Password reset token is invalid or has expired' });
+            return res.status(400).json({ error: 'Токен сброса пароля недействителен или срок его действия истек' });
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
