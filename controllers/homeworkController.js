@@ -147,3 +147,78 @@ exports.updateStudentGrade = async (req, res) => {
         res.status(500).json({ error: 'Ошибка при обновлении оценки студента' });
     }
 };
+
+// Удаление домашнего задания
+exports.deleteHomework = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Найти домашнее задание по ID
+        const homework = await Homework.findById(id);
+        if (!homework) {
+            return res.status(404).json({ error: 'Домашнее задание не найдено' });
+        }
+
+        // Удалить файлы, связанные с домашним заданием
+        const homeworkDir = path.join(__dirname, '../homework');
+        for (const file of homework.files) {
+            const filePath = path.join(homeworkDir, file);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        // Удалить ответы студентов, если они есть
+        for (const answer of homework.answer) {
+            const answerFilePath = path.join(homeworkDir, answer.file);
+            if (fs.existsSync(answerFilePath)) {
+                fs.unlinkSync(answerFilePath);
+            }
+        }
+
+        // Удалить запись из базы данных
+        await Homework.findByIdAndDelete(id);
+
+        res.json({ message: 'Домашнее задание успешно удалено' });
+    } catch (error) {
+        console.error('Ошибка при удалении домашнего задания:', error);
+        res.status(500).json({ error: 'Ошибка при удалении домашнего задания' });
+    }
+};
+
+// Массовое удаление домашних заданий
+exports.deleteMultipleHomework = async (req, res) => {
+    try {
+        const { ids } = req.body;
+
+        // Найти все домашние задания по ID
+        const homeworks = await Homework.find({ _id: { $in: ids } });
+
+        // Удалить файлы, связанные с домашними заданиями
+        const homeworkDir = path.join(__dirname, '../homework');
+        for (const homework of homeworks) {
+            for (const file of homework.files) {
+                const filePath = path.join(homeworkDir, file);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            }
+
+            // Удалить ответы студентов, если они есть
+            for (const answer of homework.answer) {
+                const answerFilePath = path.join(homeworkDir, answer.file);
+                if (fs.existsSync(answerFilePath)) {
+                    fs.unlinkSync(answerFilePath);
+                }
+            }
+        }
+
+        // Удалить записи из базы данных
+        await Homework.deleteMany({ _id: { $in: ids } });
+
+        res.json({ message: 'Домашние задания успешно удалены' });
+    } catch (error) {
+        console.error('Ошибка при массовом удалении домашних заданий:', error);
+        res.status(500).json({ error: 'Ошибка при массовом удалении домашних заданий' });
+    }
+};

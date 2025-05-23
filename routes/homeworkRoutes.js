@@ -20,4 +20,10 @@ router.put('/:id/grade', homeworkController.updateGrade);
 // Обновление оценки конкретного студента для домашнего задания
 router.put('/:id/grade/:studentId', homeworkController.updateStudentGrade);
 
+// Удаление домашнего задания
+router.delete('/:id', homeworkController.deleteHomework);
+
+// Массовое удаление домашних заданий
+router.post('/deleteMultiple', homeworkController.deleteMultipleHomework);
+
 module.exports = router;
