@@ -75,3 +75,5 @@ scheduleSchema.virtual('endTime').get(function () {
 const Schedule = mongoose.model('Schedule', scheduleSchema);
 
 module.exports = Schedule;
+
+// проверка

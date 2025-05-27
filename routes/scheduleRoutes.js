@@ -39,3 +39,5 @@ router.put('/:id/grades', scheduleController.updateGrades);
 router.get('/:id', scheduleController.getScheduleItem); 
 
 module.exports = router;
+
+//проверка

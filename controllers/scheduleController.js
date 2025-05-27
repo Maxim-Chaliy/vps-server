@@ -424,3 +424,5 @@ exports.getScheduleItem = async (req, res) => {
         });
     }
 };
+
+//проверка
