@@ -326,23 +326,22 @@ function getShortDayOfWeek(date) {
     return daysOfWeek[dateObj.getDay()];
 }
 
-// Обновление оценки
 exports.updateGrade = async (req, res) => {
     try {
         const { id } = req.params;
         const { grade } = req.body;
 
-        // Убедитесь, что id является допустимым ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ error: 'Неверный идентификатор записи' });
+        // Валидация оценки
+        if (grade !== null && (grade < 1 || grade > 5)) {
+            return res.status(400).json({ 
+                error: 'Оценка должна быть числом от 1 до 5 или null' 
+            });
         }
-
-        console.log('Обновление оценки для записи с ID:', id, 'на оценку:', grade); // Логирование обновления оценки
 
         const updatedItem = await Schedule.findByIdAndUpdate(
             id,
             { grade, updatedAt: Date.now() },
-            { new: true }
+            { new: true, runValidators: true }
         );
 
         if (!updatedItem) {
@@ -351,10 +350,10 @@ exports.updateGrade = async (req, res) => {
 
         res.json(updatedItem);
     } catch (error) {
-        console.error('Ошибка при обновлении оценки:', error);
-        res.status(500).json({
-            error: 'Ошибка при обновлении оценки',
-            details: error.message
+        console.error('Ошибка в updateGrade:', error);
+        res.status(500).json({ 
+            error: 'Ошибка сервера при обновлении оценки',
+            details: error.message 
         });
     }
 };
