@@ -40,15 +40,13 @@ const scheduleSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: null
   },
-  // Для индивидуальных занятий
   grade: {
     type: Number,
     min: 1,
     max: 5,
-    required: false // Изменено на необязательное
+    default: null
   },
-  // Для групповых занятий
-  grades: {
+  grade_group: {
     type: Map,
     of: Number,
     default: {}

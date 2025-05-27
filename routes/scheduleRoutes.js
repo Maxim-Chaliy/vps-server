@@ -20,9 +20,6 @@ router.put('/:id/updateAttendance', scheduleController.updateAttendance);
 // Массовое обновление посещаемости для группы
 router.put('/:id/updateGroupAttendance', scheduleController.updateGroupAttendance);
 
-// Обновление оценки
-router.put('/:id/grade', scheduleController.updateGrade);
-
 // Обновление занятия
 router.put('/:id', scheduleController.updateScheduleItem);
 
@@ -32,10 +29,10 @@ router.delete('/:id', scheduleController.deleteScheduleItem);
 // Массовое удаление занятий
 router.post('/deleteMultiple', scheduleController.deleteMultipleScheduleItems);
 
-// Обновление оценок студентов за занятие
-router.put('/:id/grades', scheduleController.updateGrades);
+// Обновление оценки
+router.put('/:id/updateGrade', scheduleController.updateGrade);
 
-// В routes/schedule.js
-router.get('/:id', scheduleController.getScheduleItem); 
+// Обновление оценок для группы
+router.put('/:id/updateGroupGrades', scheduleController.updateGroupGrades);
 
 module.exports = router;
