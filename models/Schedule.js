@@ -4,12 +4,12 @@ const scheduleSchema = new mongoose.Schema({
   student_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: function() { return !this.group_id; }
+    required: function () { return !this.group_id; }
   },
   group_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Group',
-    required: function() { return !this.student_id; }
+    required: function () { return !this.student_id; }
   },
   day: {
     type: String,
@@ -45,7 +45,7 @@ const scheduleSchema = new mongoose.Schema({
     type: Number,
     min: 1,
     max: 5,
-    required: function() { return this.student_id && !this.group_id; }
+    required: false // Изменено на необязательное
   },
   // Для групповых занятий
   grades: {
@@ -64,7 +64,7 @@ const scheduleSchema = new mongoose.Schema({
 });
 
 // Виртуальное поле для времени окончания
-scheduleSchema.virtual('endTime').get(function() {
+scheduleSchema.virtual('endTime').get(function () {
   const [hours, minutes] = this.time.split(':').map(Number);
   const totalMinutes = hours * 60 + minutes + this.duration;
   const endHours = Math.floor(totalMinutes / 60) % 24;

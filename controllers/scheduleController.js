@@ -51,6 +51,8 @@ exports.addScheduleItem = async (req, res) => {
     try {
         const { student_id, group_id, day, date, time, duration, subject, description } = req.body;
 
+        console.log('Received data:', { student_id, group_id, day, date, time, duration, subject, description });
+
         // Проверка минимальной продолжительности
         if (duration < 30) {
             return res.status(400).json({
@@ -76,6 +78,8 @@ exports.addScheduleItem = async (req, res) => {
                 $lte: new Date(newDate.setHours(23, 59, 59, 999))
             }
         });
+
+        console.log('Existing schedules:', existingSchedules);
 
         // Функция для преобразования времени в минуты
         const toMinutes = (timeStr) => {
@@ -113,18 +117,23 @@ exports.addScheduleItem = async (req, res) => {
             duration: parseInt(duration),
             subject,
             description: description || '',
-            attendance: student_id ? false : null
+            attendance: student_id ? false : null,
+            grade: null // или какое-то значение по умолчанию
         });
 
+
         const savedScheduleItem = await newScheduleItem.save();
+        console.log('Saved schedule item:', savedScheduleItem);
         res.status(201).json(savedScheduleItem);
     } catch (error) {
+        console.error('Ошибка при добавлении занятия в расписание:', error);
         res.status(500).json({
             error: 'Ошибка при добавлении занятия в расписание',
             details: error.message
         });
     }
 };
+
 
 // Вспомогательная функция для расчета времени окончания
 function calculateEndTime(startTime, duration) {
@@ -320,34 +329,6 @@ function getShortDayOfWeek(date) {
     return daysOfWeek[dateObj.getDay()];
 }
 
-// Обновление оценки
-exports.updateGrade = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { grade } = req.body;
-
-        const scheduleItem = await Schedule.findById(id);
-        if (!scheduleItem) {
-            return res.status(404).json({ error: 'Занятие не найдено' });
-        }
-
-        if (!scheduleItem.attendance) {
-            return res.status(400).json({ error: 'Оценка может быть выставлена только при наличии посещаемости' });
-        }
-
-        scheduleItem.grade = grade;
-        scheduleItem.updatedAt = Date.now();
-        const updatedItem = await scheduleItem.save();
-
-        res.json(updatedItem);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Ошибка при обновлении оценки',
-            details: error.message
-        });
-    }
-};
-
 // Обновление оценок для групповых занятий
 exports.updateGrades = async (req, res) => {
     try {
@@ -384,12 +365,21 @@ exports.updateGrade = async (req, res) => {
         const { id } = req.params;
         const { grade } = req.body;
 
+        console.log('Received request to update grade for item:', id, 'with grade:', grade);
+
         const scheduleItem = await Schedule.findById(id);
         if (!scheduleItem) {
+            console.error('Schedule item not found:', id);
             return res.status(404).json({ error: 'Занятие не найдено' });
         }
 
+        if (!scheduleItem.attendance) {
+            console.error('Cannot update grade: attendance is false for item:', id);
+            return res.status(400).json({ error: 'Оценка может быть выставлена только при наличии посещаемости' });
+        }
+
         if (!scheduleItem.student_id) {
+            console.error('Cannot update grade: item is not an individual lesson:', id);
             return res.status(400).json({ error: 'Индивидуальную оценку можно обновлять только для индивидуальных занятий' });
         }
 
@@ -397,14 +387,18 @@ exports.updateGrade = async (req, res) => {
         scheduleItem.updatedAt = Date.now();
         const updatedItem = await scheduleItem.save();
 
+        console.log('Grade updated successfully for item:', updatedItem);
+
         res.json(updatedItem);
     } catch (error) {
+        console.error('Ошибка при обновлении оценки:', error);
         res.status(500).json({
             error: 'Ошибка при обновлении оценки',
             details: error.message
         });
     }
 };
+
 
 // В scheduleController.js
 exports.getScheduleItem = async (req, res) => {
