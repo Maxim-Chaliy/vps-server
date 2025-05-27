@@ -365,33 +365,17 @@ exports.updateGrade = async (req, res) => {
         const { id } = req.params;
         const { grade } = req.body;
 
-        console.log('Received request to update grade for item:', id, 'with grade:', grade);
-
         const scheduleItem = await Schedule.findById(id);
         if (!scheduleItem) {
-            console.error('Schedule item not found:', id);
             return res.status(404).json({ error: 'Занятие не найдено' });
-        }
-
-        if (!scheduleItem.attendance) {
-            console.error('Cannot update grade: attendance is false for item:', id);
-            return res.status(400).json({ error: 'Оценка может быть выставлена только при наличии посещаемости' });
-        }
-
-        if (!scheduleItem.student_id) {
-            console.error('Cannot update grade: item is not an individual lesson:', id);
-            return res.status(400).json({ error: 'Индивидуальную оценку можно обновлять только для индивидуальных занятий' });
         }
 
         scheduleItem.grade = grade;
         scheduleItem.updatedAt = Date.now();
         const updatedItem = await scheduleItem.save();
 
-        console.log('Grade updated successfully for item:', updatedItem);
-
         res.json(updatedItem);
     } catch (error) {
-        console.error('Ошибка при обновлении оценки:', error);
         res.status(500).json({
             error: 'Ошибка при обновлении оценки',
             details: error.message
