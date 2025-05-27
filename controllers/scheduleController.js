@@ -319,3 +319,114 @@ function getShortDayOfWeek(date) {
     const daysOfWeek = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
     return daysOfWeek[dateObj.getDay()];
 }
+
+// Обновление оценки
+exports.updateGrade = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { grade } = req.body;
+
+        const scheduleItem = await Schedule.findById(id);
+        if (!scheduleItem) {
+            return res.status(404).json({ error: 'Занятие не найдено' });
+        }
+
+        if (!scheduleItem.attendance) {
+            return res.status(400).json({ error: 'Оценка может быть выставлена только при наличии посещаемости' });
+        }
+
+        scheduleItem.grade = grade;
+        scheduleItem.updatedAt = Date.now();
+        const updatedItem = await scheduleItem.save();
+
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(500).json({
+            error: 'Ошибка при обновлении оценки',
+            details: error.message
+        });
+    }
+};
+
+// Обновление оценок для групповых занятий
+exports.updateGrades = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { grades } = req.body;
+
+        const scheduleItem = await Schedule.findById(id);
+        if (!scheduleItem) {
+            return res.status(404).json({ error: 'Занятие не найдено' });
+        }
+
+        if (!scheduleItem.group_id) {
+            return res.status(400).json({ error: 'Оценки группы можно обновлять только для групповых занятий' });
+        }
+
+        // Обновляем оценки
+        scheduleItem.grades = grades;
+        scheduleItem.markModified('grades');
+        scheduleItem.updatedAt = Date.now();
+
+        const updatedItem = await scheduleItem.save();
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(500).json({
+            error: 'Ошибка при обновлении оценок',
+            details: error.message
+        });
+    }
+};
+
+// Обновление оценки для индивидуального занятия
+exports.updateGrade = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { grade } = req.body;
+
+        const scheduleItem = await Schedule.findById(id);
+        if (!scheduleItem) {
+            return res.status(404).json({ error: 'Занятие не найдено' });
+        }
+
+        if (!scheduleItem.student_id) {
+            return res.status(400).json({ error: 'Индивидуальную оценку можно обновлять только для индивидуальных занятий' });
+        }
+
+        scheduleItem.grade = grade;
+        scheduleItem.updatedAt = Date.now();
+        const updatedItem = await scheduleItem.save();
+
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(500).json({
+            error: 'Ошибка при обновлении оценки',
+            details: error.message
+        });
+    }
+};
+
+// В scheduleController.js
+exports.getScheduleItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const scheduleItem = await Schedule.findById(id);
+
+        if (!scheduleItem) {
+            return res.status(404).json({ error: 'Занятие не найдено' });
+        }
+
+        // Преобразуем grades Map в объект, если нужно
+        const result = scheduleItem.toObject();
+        if (scheduleItem.grades instanceof Map) {
+            result.grades = Object.fromEntries(scheduleItem.grades);
+        }
+
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({
+            error: 'Ошибка при получении занятия',
+            details: error.message
+        });
+    }
+};
