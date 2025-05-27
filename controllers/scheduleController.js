@@ -119,12 +119,10 @@ exports.addScheduleItem = async (req, res) => {
             grade: null // Добавьте это поле
         });
 
-        console.log('Сохраняемый элемент:', newScheduleItem); // Логирование сохраняемого элемента
 
         const savedScheduleItem = await newScheduleItem.save();
         res.status(201).json(savedScheduleItem);
     } catch (error) {
-        console.error('Ошибка при добавлении занятия в расписание:', error);
         res.status(500).json({
             error: 'Ошибка при добавлении занятия в расписание',
             details: error.message
@@ -331,17 +329,15 @@ exports.updateGrade = async (req, res) => {
         const { id } = req.params;
         const { grade } = req.body;
 
-        // Валидация оценки
-        if (grade !== null && (grade < 1 || grade > 5)) {
-            return res.status(400).json({ 
-                error: 'Оценка должна быть числом от 1 до 5 или null' 
-            });
+        // Убедитесь, что id является допустимым ObjectId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ error: 'Неверный идентификатор записи' });
         }
 
         const updatedItem = await Schedule.findByIdAndUpdate(
             id,
             { grade, updatedAt: Date.now() },
-            { new: true, runValidators: true }
+            { new: true }
         );
 
         if (!updatedItem) {
@@ -350,14 +346,13 @@ exports.updateGrade = async (req, res) => {
 
         res.json(updatedItem);
     } catch (error) {
-        console.error('Ошибка в updateGrade:', error);
-        res.status(500).json({ 
-            error: 'Ошибка сервера при обновлении оценки',
-            details: error.message 
+        console.error('Ошибка при обновлении оценки:', error);
+        res.status(500).json({
+            error: 'Ошибка при обновлении оценки',
+            details: error.message
         });
     }
 };
-
 
 // Обновление оценок для группы
 exports.updateGroupGrades = async (req, res) => {
