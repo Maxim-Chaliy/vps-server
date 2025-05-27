@@ -46,7 +46,6 @@ exports.getGroupScheduleWithStudents = async (req, res) => {
     }
 };
 
-// Добавление нового занятия в расписание
 exports.addScheduleItem = async (req, res) => {
     try {
         const { student_id, group_id, day, date, time, duration, subject, description } = req.body;
@@ -121,6 +120,7 @@ exports.addScheduleItem = async (req, res) => {
             grade: null // или какое-то значение по умолчанию
         });
 
+        console.log('Saving new schedule item:', newScheduleItem);
 
         const savedScheduleItem = await newScheduleItem.save();
         console.log('Saved schedule item:', savedScheduleItem);
@@ -133,6 +133,7 @@ exports.addScheduleItem = async (req, res) => {
         });
     }
 };
+
 
 
 // Вспомогательная функция для расчета времени окончания
