@@ -119,10 +119,12 @@ exports.addScheduleItem = async (req, res) => {
             grade: null // Добавьте это поле
         });
 
+        console.log('Сохраняемый элемент:', newScheduleItem); // Логирование сохраняемого элемента
 
         const savedScheduleItem = await newScheduleItem.save();
         res.status(201).json(savedScheduleItem);
     } catch (error) {
+        console.error('Ошибка при добавлении занятия в расписание:', error);
         res.status(500).json({
             error: 'Ошибка при добавлении занятия в расписание',
             details: error.message
@@ -324,6 +326,7 @@ function getShortDayOfWeek(date) {
     return daysOfWeek[dateObj.getDay()];
 }
 
+// Обновление оценки
 exports.updateGrade = async (req, res) => {
     try {
         const { id } = req.params;
@@ -333,6 +336,8 @@ exports.updateGrade = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ error: 'Неверный идентификатор записи' });
         }
+
+        console.log('Обновление оценки для записи с ID:', id, 'на оценку:', grade); // Логирование обновления оценки
 
         const updatedItem = await Schedule.findByIdAndUpdate(
             id,
@@ -353,6 +358,7 @@ exports.updateGrade = async (req, res) => {
         });
     }
 };
+
 
 // Обновление оценок для группы
 exports.updateGroupGrades = async (req, res) => {
