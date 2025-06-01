@@ -55,6 +55,6 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/employment', employmentRoutes);
 app.use('/api', applicationRoutes);
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0',() => {
     console.log(`Сервер запущен на порту ${port}`);
 });
