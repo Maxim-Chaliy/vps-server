@@ -36,11 +36,6 @@ router.put('/:id/updateGrade', scheduleController.updateGrade);
 router.put('/:id/updateGroupGrades', scheduleController.updateGroupGrades);
 
 // Статистика занятий
-router.get('/stats', scheduleController.getStats);
-router.get('/stats/individual', scheduleController.getIndividualStats);
-router.get('/stats/group', scheduleController.getGroupStats);
-router.get('/stats/attendance', scheduleController.getAttendanceStats);
-router.get('/stats/subjects', scheduleController.getSubjectStats);
-router.get('/stats/total-hours', scheduleController.getTotalHoursStats);
+router.get('/stats', scheduleController.getAllStats);
 
 module.exports = router;
