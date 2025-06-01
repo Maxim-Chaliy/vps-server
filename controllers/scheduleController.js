@@ -253,6 +253,7 @@ exports.updateScheduleItem = async (req, res) => {
     }
 };
 
+
 // Удаление записи из расписания
 exports.deleteScheduleItem = async (req, res) => {
     try {
@@ -382,5 +383,157 @@ exports.updateGroupGrades = async (req, res) => {
             error: 'Ошибка при обновлении оценок группы',
             details: error.message
         });
+    }
+};
+
+// В scheduleController.js
+exports.getStats = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+
+        const count = await Schedule.countDocuments({
+            date: {
+                $gte: new Date(start),
+                $lte: new Date(end)
+            }
+        });
+
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.getIndividualStats = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+
+        const count = await Schedule.countDocuments({
+            student_id: { $ne: null },
+            date: {
+                $gte: new Date(start),
+                $lte: new Date(end)
+            }
+        });
+
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.getGroupStats = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+
+        const count = await Schedule.countDocuments({
+            group_id: { $ne: null },
+            date: {
+                $gte: new Date(start),
+                $lte: new Date(end)
+            }
+        });
+
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.getAttendanceStats = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+
+        const sessions = await Schedule.find({
+            date: {
+                $gte: new Date(start),
+                $lte: new Date(end)
+            },
+            $or: [
+                { student_id: { $exists: true } },
+                { group_id: { $exists: true } }
+            ]
+        });
+
+        let totalSessions = 0;
+        let attendedSessions = 0;
+
+        sessions.forEach(session => {
+            if (session.student_id) {
+                // Индивидуальное занятие
+                totalSessions++;
+                if (session.attendance === true) {
+                    attendedSessions++;
+                }
+            } else if (session.group_id) {
+                // Групповое занятие
+                if (session.attendance && typeof session.attendance === 'object') {
+                    const students = Object.keys(session.attendance);
+                    totalSessions += students.length;
+                    attendedSessions += students.filter(studentId => session.attendance[studentId] === true).length;
+                }
+            }
+        });
+
+        const percentage = totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
+
+        res.json({ percentage });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.getSubjectStats = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+
+        const subjectStats = await Schedule.aggregate([
+            {
+                $match: {
+                    date: {
+                        $gte: new Date(start),
+                        $lte: new Date(end)
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: "$subject",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        res.json(subjectStats);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
+exports.getTotalHoursStats = async (req, res) => {
+    try {
+        const { start, end } = req.query;
+
+        const totalHours = await Schedule.aggregate([
+            {
+                $match: {
+                    date: {
+                        $gte: new Date(start),
+                        $lte: new Date(end)
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalHours: { $sum: { $divide: ["$duration", 60] } } // Преобразование минут в часы
+                }
+            }
+        ]);
+
+        res.json(totalHours[0] || { totalHours: 0 });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
