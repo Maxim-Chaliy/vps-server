@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'student'],
     default: 'user'
   },
-  confirmationCode: {
+  confirmationToken: {
     type: String
   },
   resetPasswordToken: {

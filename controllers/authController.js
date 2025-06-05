@@ -39,18 +39,26 @@ exports.register = async (req, res) => {
             });
         }
 
-        const existingUser = await User.findOne({
-            $or: [{ email }, { username }]
-        });
+        const existingUserByEmail = await User.findOne({ email });
+        if (existingUserByEmail) {
+            if (existingUserByEmail.isVerified) {
+                return res.status(400).json({
+                    error: 'Пользователь с таким email уже зарегистрирован'
+                });
+            } else {
+                await User.findByIdAndDelete(existingUserByEmail._id);
+            }
+        }
 
-        if (existingUser) {
+        const existingUserByUsername = await User.findOne({ username });
+        if (existingUserByUsername) {
             return res.status(400).json({
-                error: 'User with this email or username already exists'
+                error: 'Пользователь с таким логином уже зарегистрирован'
             });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const confirmationToken = crypto.randomBytes(20).toString('hex');
 
         const user = new User({
             name,
@@ -60,39 +68,35 @@ exports.register = async (req, res) => {
             username,
             password: hashedPassword,
             role: 'user',
-            confirmationCode,
+            confirmationToken, // Сохраняем токен подтверждения
             isVerified: false
         });
 
         await user.save();
 
+        const confirmationUrl = `${process.env.FRONTEND_URL}/confirm-email?token=${confirmationToken}`;
+
         const mailOptions = {
             from: `"Easymath Service" <${process.env.YANDEX_SMTP_USER}>`,
             to: email,
-            subject: 'Ваш код доступа к Easymath',
-            text: `Здравствуйте,\n\nДля завершения регистрации используйте код: ${confirmationCode}\n\nС уважением,\nКоманда Easymath`,
+            subject: 'Подтверждение регистрации в Easymath',
             html: `
                 <div style="font-family: Arial, sans-serif; color: #333;">
                     <h2 style="color: #2c3e50;">Здравствуйте,</h2>
-                    <p>Для завершения регистрации в сервисе Easymath используйте следующий код:</p>
-                    <div style="background: #f8f9fa; padding: 15px; margin: 20px 0;
-                                border-left: 4px solid #3498db; font-size: 18px;">
-                        ${confirmationCode}
-                    </div>
-                    <p>Если вы не запрашивали этот код, проигнорируйте это письмо.</p>
+                    <p>Для завершения регистрации в сервисе Easymath перейдите по следующей ссылке:</p>
+                    <a href="${confirmationUrl}" style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-left: 4px solid #3498db; font-size: 18px; display: inline-block;">
+                        Подтвердить email
+                    </a>
+                    <p>Если вы не запрашивали регистрацию, проигнорируйте это письмо.</p>
                     <p style="margin-top: 30px;">С уважением,<br>Команда Easymath</p>
                 </div>
             `,
-            headers: {
-                'X-Laziness-level': '1000',
-                'X-Mailer': 'Nodemailer'
-            }
         };
 
         await transporter.sendMail(mailOptions);
 
         res.status(201).json({
-            message: 'User registered successfully. Please check your email for the confirmation code.',
+            message: 'User registered successfully. Please check your email for the confirmation link.',
             user: {
                 id: user._id,
                 name: user.name,
@@ -136,14 +140,26 @@ exports.login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ username });
+        // Поиск пользователя по логину или email
+        const user = await User.findOne({
+            $or: [
+                { username: username },
+                { email: username }
+            ]
+        });
+
         if (!user) {
-            return res.status(400).json({ error: 'Неверное имя пользователя или пароль' });
+            return res.status(400).json({ error: 'Неверный email/логин или пароль' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ error: 'Неверное имя пользователя или пароль' });
+            return res.status(400).json({ error: 'Неверный email/логин или пароль' });
+        }
+
+        // Проверка, подтвердил ли пользователь свою почту
+        if (!user.isVerified) {
+            return res.status(403).json({ error: 'Пожалуйста, подтвердите вашу электронную почту перед входом.' });
         }
 
         const token = jwt.sign(
