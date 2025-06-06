@@ -14,6 +14,7 @@ const homeworkSchema = new mongoose.Schema({
   day: { type: String, required: true },
   dueDate: { type: Date, required: true },
   files: { type: [String], required: true },
+  comment: { type: String }, // Добавьте поле для комментария
   answer: [{
     student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     file: { type: String, required: true }

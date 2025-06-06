@@ -46,7 +46,7 @@ exports.addHomeworkItem = [
     upload.array('files'),
     async (req, res) => {
         try {
-            const { student_id, group_id, day, dueDate } = req.body;
+            const { student_id, group_id, day, dueDate, comment } = req.body; // Добавьте comment
             const files = req.files ? req.files.map(file => file.filename) : [];
 
             // Валидация данных
@@ -60,8 +60,9 @@ exports.addHomeworkItem = [
                 day,
                 dueDate: new Date(dueDate),
                 files,
+                comment, // Добавьте comment
                 answer: [],
-                grade: undefined, // Явно устанавливаем undefined вместо null
+                grade: undefined,
                 uploadedAt: new Date()
             });
 
