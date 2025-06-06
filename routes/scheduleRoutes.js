@@ -38,4 +38,6 @@ router.put('/:id/updateGroupGrades', scheduleController.updateGroupGrades);
 // Статистика занятий
 router.get('/stats', scheduleController.getAllStats);
 
+router.post('/deleteByStudent', scheduleController.deleteByStudent);
+
 module.exports = router;

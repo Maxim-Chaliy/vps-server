@@ -13,4 +13,6 @@ router.get('/students', userController.getAllStudents);
 // Маршрут для обновления роли пользователя
 router.put('/:id/updateRole', userController.updateUserRole);
 
+router.put('/:id/updateRole', userController.updateUserRole);
+
 module.exports = router;

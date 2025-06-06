@@ -395,3 +395,38 @@ exports.getAllStats = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+exports.deleteByStudent = async (req, res) => {
+    try {
+        const { student_id } = req.body;
+        const result = await Schedule.deleteMany({ student_id });
+        res.json({ deletedCount: result.deletedCount });
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка при удалении занятий' });
+    }
+};
+
+// Удаление записей расписания, связанных со студентом
+exports.deleteByStudent = async (req, res) => {
+  try {
+    const { student_id } = req.body;
+
+    // Удаляем записи, где студент указан как student_id
+    await Schedule.deleteMany({ student_id });
+
+    // Для записей, где студент входит в группу, удаляем его данные из attendance и grade_group
+    await Schedule.updateMany(
+      { "attendance": { $exists: true } },
+      { $unset: { [`attendance.${student_id}`]: 1 } }
+    );
+
+    await Schedule.updateMany(
+      { "grade_group": { $exists: true } },
+      { $unset: { [`grade_group.${student_id}`]: 1 } }
+    );
+
+    res.status(200).json({ message: 'Записи расписания успешно удалены' });
+  } catch (error) {
+    res.status(400).json({ message: 'Ошибка при удалении записей расписания', error: error.message });
+  }
+};

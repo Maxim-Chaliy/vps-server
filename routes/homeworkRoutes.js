@@ -26,4 +26,6 @@ router.delete('/:id', homeworkController.deleteHomework);
 // Массовое удаление домашних заданий
 router.post('/deleteMultiple', homeworkController.deleteMultipleHomework);
 
+router.post('/deleteByStudent', homeworkController.deleteByStudent);
+
 module.exports = router;

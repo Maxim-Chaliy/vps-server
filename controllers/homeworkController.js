@@ -223,3 +223,38 @@ exports.deleteMultipleHomework = async (req, res) => {
         res.status(500).json({ error: 'Ошибка при массовом удалении домашних заданий' });
     }
 };
+
+exports.deleteByStudent = async (req, res) => {
+    try {
+        const { student_id } = req.body;
+        const result = await Homework.deleteMany({ student_id });
+        res.json({ deletedCount: result.deletedCount });
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка при удалении ДЗ' });
+    }
+};
+
+// Удаление записей домашних заданий, связанных со студентом
+exports.deleteByStudent = async (req, res) => {
+  try {
+    const { student_id } = req.body;
+
+    // Удаляем записи, где студент указан как student_id
+    await Homework.deleteMany({ student_id });
+
+    // Для записей, где студент входит в группу, удаляем его данные из answer и grades
+    await Homework.updateMany(
+      { "grades": { $exists: true } },
+      { $unset: { [`grades.${student_id}`]: 1 } }
+    );
+
+    await Homework.updateMany(
+      {},
+      { $pull: { answer: { student_id } } }
+    );
+
+    res.status(200).json({ message: 'Записи домашних заданий успешно удалены' });
+  } catch (error) {
+    res.status(400).json({ message: 'Ошибка при удалении записей домашних заданий', error: error.message });
+  }
+};

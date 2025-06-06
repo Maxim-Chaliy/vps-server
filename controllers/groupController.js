@@ -1,5 +1,7 @@
 const Group = require('../models/Groups');
 const User = require('../models/User');
+const Schedule = require('../models/Schedule'); // Импортируем модель Schedule
+const Homework = require('../models/Homework'); // Импортируем модель Homework
 
 exports.getAllStudents = async (req, res) => {
     try {
@@ -125,13 +127,22 @@ exports.updateGroup = async (req, res) => {
 // Удаление группы
 exports.deleteGroup = async (req, res) => {
     try {
-        const group = await Group.findByIdAndDelete(req.params.id);
-        
+        const groupId = req.params.id;
+
+        // Удаляем связанные записи из расписания
+        await Schedule.deleteMany({ group_id: groupId });
+
+        // Удаляем связанные записи из домашних заданий
+        await Homework.deleteMany({ group_id: groupId });
+
+        // Удаляем группу
+        const group = await Group.findByIdAndDelete(groupId);
+
         if (!group) {
             return res.status(404).json({ message: 'Группа не найдена' });
         }
-        
-        res.status(200).json({ message: 'Группа успешно удалена' });
+
+        res.status(200).json({ message: 'Группа и связанные записи успешно удалены' });
     } catch (error) {
         res.status(400).json({ message: 'Ошибка при удалении группы', error: error.message });
     }

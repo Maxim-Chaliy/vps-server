@@ -26,12 +26,18 @@ exports.updateUserRole = async (req, res) => {
     const { role } = req.body;
 
     try {
-        const user = await User.findByIdAndUpdate(id, { role }, { new: true });
+        const user = await User.findByIdAndUpdate(
+            id, 
+            { role }, 
+            { new: true }
+        );
+        
         if (!user) {
             return res.status(404).json({ error: 'Пользователь не найден' });
         }
+        
         res.json(user);
     } catch (error) {
-        res.status(500).json({ error: 'Ошибка при обновлении роли пользователя' });
+        res.status(500).json({ error: 'Ошибка при изменении роли' });
     }
 };
