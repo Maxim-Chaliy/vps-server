@@ -46,10 +46,9 @@ exports.addHomeworkItem = [
     upload.array('files'),
     async (req, res) => {
         try {
-            const { student_id, group_id, day, dueDate, comment } = req.body; // Добавьте comment
+            const { student_id, group_id, day, dueDate, comment, subject } = req.body;
             const files = req.files ? req.files.map(file => file.filename) : [];
 
-            // Валидация данных
             if (!student_id && !group_id) {
                 return res.status(400).json({ error: 'Необходимо указать student_id или group_id' });
             }
@@ -59,10 +58,10 @@ exports.addHomeworkItem = [
                 group_id: group_id || undefined,
                 day,
                 dueDate: new Date(dueDate),
+                subject, // Добавьте это поле
                 files,
-                comment, // Добавьте comment
+                comment,
                 answer: [],
-                grade: undefined,
                 uploadedAt: new Date()
             });
 
