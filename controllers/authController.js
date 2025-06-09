@@ -140,7 +140,6 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Поиск пользователя по логину или email
         const user = await User.findOne({
             $or: [
                 { username: username },
@@ -157,7 +156,6 @@ exports.login = async (req, res) => {
             return res.status(400).json({ error: 'Неверный email/логин или пароль' });
         }
 
-        // Проверка, подтвердил ли пользователь свою почту
         if (!user.isVerified) {
             return res.status(403).json({ error: 'Пожалуйста, подтвердите вашу электронную почту перед входом.' });
         }
@@ -173,6 +171,8 @@ exports.login = async (req, res) => {
             user: {
                 id: user._id,
                 name: user.name,
+                surname: user.surname,
+                patronymic: user.patronymic,
                 email: user.email,
                 username: user.username,
                 role: user.role
