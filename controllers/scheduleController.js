@@ -1,6 +1,6 @@
 const Schedule = require('../models/Schedule');
 const mongoose = require('mongoose');
-
+const { sendEmail } = require('../services/emailService');
 
 // Получение расписания для конкретного студента
 exports.getScheduleByStudentId = async (req, res) => {
@@ -116,11 +116,27 @@ exports.addScheduleItem = async (req, res) => {
             subject,
             description: description || '',
             attendance: student_id ? false : null,
-            grade: null // Добавьте это поле
+            grade: null
         });
 
-
         const savedScheduleItem = await newScheduleItem.save();
+
+        // Отправка уведомления на почту
+        if (student_id) {
+            const user = await mongoose.model('User').findById(student_id);
+            if (user && user.email) {
+                // Форматируем дату в DD.MM.YYYY
+                const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }).replace(/\//g, '.');
+
+                const text = `Вам добавлено новое занятие по предмету ${subject} на ${formattedDate} в ${time}. Продолжительность занятия: ${duration} минут.`;
+                await sendEmail(user.email, subject, text);
+            }
+        }
+
         res.status(201).json(savedScheduleItem);
     } catch (error) {
         res.status(500).json({
@@ -408,25 +424,25 @@ exports.deleteByStudent = async (req, res) => {
 
 // Удаление записей расписания, связанных со студентом
 exports.deleteByStudent = async (req, res) => {
-  try {
-    const { student_id } = req.body;
+    try {
+        const { student_id } = req.body;
 
-    // Удаляем записи, где студент указан как student_id
-    await Schedule.deleteMany({ student_id });
+        // Удаляем записи, где студент указан как student_id
+        await Schedule.deleteMany({ student_id });
 
-    // Для записей, где студент входит в группу, удаляем его данные из attendance и grade_group
-    await Schedule.updateMany(
-      { "attendance": { $exists: true } },
-      { $unset: { [`attendance.${student_id}`]: 1 } }
-    );
+        // Для записей, где студент входит в группу, удаляем его данные из attendance и grade_group
+        await Schedule.updateMany(
+            { "attendance": { $exists: true } },
+            { $unset: { [`attendance.${student_id}`]: 1 } }
+        );
 
-    await Schedule.updateMany(
-      { "grade_group": { $exists: true } },
-      { $unset: { [`grade_group.${student_id}`]: 1 } }
-    );
+        await Schedule.updateMany(
+            { "grade_group": { $exists: true } },
+            { $unset: { [`grade_group.${student_id}`]: 1 } }
+        );
 
-    res.status(200).json({ message: 'Записи расписания успешно удалены' });
-  } catch (error) {
-    res.status(400).json({ message: 'Ошибка при удалении записей расписания', error: error.message });
-  }
+        res.status(200).json({ message: 'Записи расписания успешно удалены' });
+    } catch (error) {
+        res.status(400).json({ message: 'Ошибка при удалении записей расписания', error: error.message });
+    }
 };

@@ -1,7 +1,9 @@
+const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const Homework = require('../models/Homework');
+const { sendEmail } = require('../services/emailService');
 
 // Настройка multer для сохранения файлов
 const storage = multer.diskStorage({
@@ -58,7 +60,7 @@ exports.addHomeworkItem = [
                 group_id: group_id || undefined,
                 day,
                 dueDate: new Date(dueDate),
-                subject, // Добавьте это поле
+                subject,
                 files,
                 comment,
                 answer: [],
@@ -66,6 +68,17 @@ exports.addHomeworkItem = [
             });
 
             const savedHomeworkItem = await newHomeworkItem.save();
+
+            // Отправка уведомления на почту
+            if (student_id) {
+                const user = await mongoose.model('User').findById(student_id);
+                if (user && user.email) {
+                    const emailSubject = 'Новое домашнее задание';
+                    const emailText = `Вам добавлено новое домашнее задание по предмету ${subject}. Срок выполнения: ${dueDate}.`;
+                    await sendEmail(user.email, emailSubject, emailText);
+                }
+            }
+
             res.json(savedHomeworkItem);
         } catch (error) {
             console.error('Error saving homework item:', error);
@@ -235,25 +248,25 @@ exports.deleteByStudent = async (req, res) => {
 
 // Удаление записей домашних заданий, связанных со студентом
 exports.deleteByStudent = async (req, res) => {
-  try {
-    const { student_id } = req.body;
+    try {
+        const { student_id } = req.body;
 
-    // Удаляем записи, где студент указан как student_id
-    await Homework.deleteMany({ student_id });
+        // Удаляем записи, где студент указан как student_id
+        await Homework.deleteMany({ student_id });
 
-    // Для записей, где студент входит в группу, удаляем его данные из answer и grades
-    await Homework.updateMany(
-      { "grades": { $exists: true } },
-      { $unset: { [`grades.${student_id}`]: 1 } }
-    );
+        // Для записей, где студент входит в группу, удаляем его данные из answer и grades
+        await Homework.updateMany(
+            { "grades": { $exists: true } },
+            { $unset: { [`grades.${student_id}`]: 1 } }
+        );
 
-    await Homework.updateMany(
-      {},
-      { $pull: { answer: { student_id } } }
-    );
+        await Homework.updateMany(
+            {},
+            { $pull: { answer: { student_id } } }
+        );
 
-    res.status(200).json({ message: 'Записи домашних заданий успешно удалены' });
-  } catch (error) {
-    res.status(400).json({ message: 'Ошибка при удалении записей домашних заданий', error: error.message });
-  }
+        res.status(200).json({ message: 'Записи домашних заданий успешно удалены' });
+    } catch (error) {
+        res.status(400).json({ message: 'Ошибка при удалении записей домашних заданий', error: error.message });
+    }
 };
