@@ -249,7 +249,7 @@ exports.forgotPassword = async (req, res) => {
         user.resetPasswordExpires = resetTokenExpires;
         await user.save();
 
-        const resetUrl = `/reset-password?token=${resetToken}`;
+        const resetUrl = `https://easymath-online.ru/reset-password?token=${resetToken}`;
 
         const mailOptions = {
             from: `"Easymath Service" <${process.env.YANDEX_SMTP_USER}>`,
